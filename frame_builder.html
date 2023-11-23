@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Custom styles go here */
+        canvas {
+            border: 2px solid black;
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const canvas = document.getElementById("ledCanvas");
+            const ctx = canvas.getContext("2d");
+            const LED_RADIUS = 30;
+            const GRID_SIZE = 4;
+            const ledStates = Array(16).fill(0); // Initialize LED states (0: white, 1: red)
+            const frames = [];
+            let currentFrame = 0;
+            var setIntervalId = "";
+            let playing = false;
+            const timeInterval = 50; // Time interval in milliseconds
+            drawLEDMatrix();
+
+
+            function drawLEDMatrix() {
+                ctx.fillStyle = "black"
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "rgb(55, 55, 55)";
+                ctx.strokeStyle = "black";
+
+                for (let i = 0; i < GRID_SIZE; i++) {
+                    for (let j = 0; j < GRID_SIZE; j++) {
+                        const index = i * GRID_SIZE + j;
+                        const x = j * 2 * LED_RADIUS + LED_RADIUS;
+                        const y = i * 2 * LED_RADIUS + LED_RADIUS;
+
+                        ctx.beginPath();
+                        ctx.arc(x, y, LED_RADIUS, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        if (ledStates[index] === 1) {
+                            ctx.fillStyle = "red";
+                            ctx.fill();
+                            ctx.stroke();
+                            ctx.fillStyle = "rgb(55, 55, 55)";
+
+                        }
+                    }
+                }
+            }
+
+            function saveFrame() {
+                frames.push(ledStates.slice()); // Use slice to create a copy of the array
+            }
+
+            function clearFrame() {
+                ledStates.fill(0);
+            }
+
+            function duplicateFrame() {
+                saveFrame();
+                updateFrameCounter();
+    
+            }
+            function updateFrameCounter() {
+                document.getElementById("frameCounterHeading").innerHTML = "Frames: " + frames.length;
+            }
+
+            function startOver() {
+                stopPlayback();
+                clearFrame();
+                drawLEDMatrix();
+                frames.length = 0;
+                updateFrameCounter();
+            }
+            function showFrame(frame) {
+                for (let i = 0; i < ledStates.length; i++) {
+                        ledStates[i] = frame[i];
+                    }
+                drawLEDMatrix();
+            }
+            function playFrames() {
+                if (currentFrame < frames.length) {
+                    const frame = frames[currentFrame];
+                    showFrame(frame);
+                    currentFrame++;
+                } else {
+                    currentFrame = 0;
+                }
+            }
+
+            function startPlayback() {
+                playing = true;
+                setIntervalId = setInterval(playFrames, timeInterval);
+            }
+
+            function stopPlayback() {
+                playing = false;
+                clearInterval(setIntervalId);
+            }
+
+            function downloadFrameList() {
+                const frameList = frames.map(frame => frame.map(led => `0b${led.toString(2).padStart(8, '0')}`).join(', ')).join(',\n');
+                const content = `const uint8_t animation[] = {\n${frameList}\n};`;
+
+                const blob = new Blob([content], { type: "text/plain" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "frame_list.txt";
+                link.click();
+            }
+
+            canvas.addEventListener("mousedown", function (event) {
+                if (!playing) {
+                    const rect = canvas.getBoundingClientRect();
+                    const mouseX = event.clientX - rect.left;
+                    const mouseY = event.clientY - rect.top;
+
+                    const col = Math.floor(mouseX / (2 * LED_RADIUS));
+                    const row = Math.floor(mouseY / (2 * LED_RADIUS));
+                    const index = row * GRID_SIZE + col;
+
+                    if (index >= 0 && index < ledStates.length) {
+                        ledStates[index] = 1 - ledStates[index];
+                        drawLEDMatrix();
+                    }
+                }
+            });
+
+
+
+            document.getElementById("stopAnimation").addEventListener("click", function () {
+
+                    clearFrame();
+                    drawLEDMatrix();
+                    updateFrameCounter();
+                
+            });
+            document.getElementById("saveButton").addEventListener("click", function () {
+                if (!playing) {
+                    saveFrame();
+                    clearFrame();
+                    drawLEDMatrix();
+                    updateFrameCounter();
+                }
+            });
+
+            document.getElementById("playButton").addEventListener("click", function () {
+                if (!playing) {
+                    saveFrame(); // Save the current state before playback
+                    startPlayback();
+                }
+            });
+            document.getElementById("startOverButton").addEventListener("click", startOver);
+            document.getElementById("downloadButton").addEventListener("click", downloadFrameList);
+            document.getElementById("duplicateFrameButton").addEventListener("click", duplicateFrame);
+            document.getElementById("clearFrameButton").addEventListener("click", clearFrame);
+        });
+        </script>
+    </head>
+    <body>
+        <div class="d-flex flex-column min-vh-100 justify-content-center align-items-center">
+          <!-- Background image -->
+
+<!-- Background image -->
+          <h1>LED-Matrix Animator</h1>
+            <div class="mb-3">
+
+                <canvas id="ledCanvas" width="250" height="250"></canvas>
+                <h2 id="frameCounterHeading">Frames:0</h2>
+            </div>
+            <div class="mb-3">
+                <button id="saveButton" class="btn btn-primary">Save Frame</button>
+                <button id="duplicateFrameButton" class="btn btn-primary">Duplicate Frame</button>
+                <button id="clearFrameButton" class="btn btn-warning">Clear Frame</button>
+            </div> 
+            <br>
+            <div class="mb-3">   
+                <button id="startOverButton" class="btn btn-danger">Restart</button>
+                <button id="playButton" class="btn btn-success">Play Animation</button>
+                <button id="downloadButton" class="btn btn-success">Download Animation List</button>
+                <button id="stopAnimation" class="btn-success">Stop Animation</button>
+            </div>
+            <br>
+            <br>
+            <div class="mb-3">
+              <h2>Anleitung:</h2>
+
+            </div>
+            <div class="mb-3">
+              <p>1. Graue LEDs markieren, um LEDs für einen Frame zum Leuchten zu bringen</p>
+              <p>2. Frame abspeichern</p>
+              <p>3. Rinse and repeat, bis deine Animation Würze erlangt</p>
+              <p>4 .Animation Abspielen & Herunterladen :)</p>
+
+        </div>
+
+        <!-- Bootstrap JS (Popper.js and Bootstrap JS) -->
+        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    </body>
+    </html>
