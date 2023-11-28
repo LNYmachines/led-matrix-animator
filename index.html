@@ -127,23 +127,22 @@
               console.log("Frames:", frames);
               const frameList = [];
               for (let j=0; j < frames.length; j++){
-                console.log("Frame:", frames[j]);
+                  two_byte_framelist = "0b"
                   for (let i=0; i<16; i++){
-                    if (frames[j][i] === 1) {
-                        frameList.push(led_matrix[i]);
-                    } else {
-                      frameList.push("0b11110000");
-                    }
+                    two_byte_framelist += frames[j][i];
                   }
-                }
-                formatted = frameList.join(",\n")
-                const content = `const uint8_t animation[] = {\n${formatted}};`;
+                  frameList.push(two_byte_framelist);
+              }
 
-                const blob = new Blob([content], { type: "text/plain" });
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = "frame_list.txt";
-                link.click();
+
+              formatted = frameList.join(",\n")
+              const content = `const word PROGMEM animation[] = {\n${formatted}};`;
+
+              const blob = new Blob([content], { type: "text/plain" });
+              const link = document.createElement("a");
+              link.href = URL.createObjectURL(blob);
+              link.download = "frame_list.txt";
+              link.click();
             }
 
             canvas.addEventListener("mousedown", function (event) {
