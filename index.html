@@ -41,8 +41,23 @@
             var setIntervalId = "";
             let playing = false;
             let timeInterval = document.getElementById("intervalTime").value // Time interval in milliseconds
+            document.getElementById("intervalTimeHeading").innerHTML = "Time interval between Frames: " + timeInterval;
             drawLEDMatrix();
 
+            function generateAnimation(){
+                const frameList = [];
+                for (let j=0; j < frames.length; j++){
+                    two_byte_framelist = "0b"
+                    for (let i=0; i<16; i++){
+                      two_byte_framelist += frames[j][i];
+                    }
+                    frameList.push(two_byte_framelist);
+                }
+
+                formatted = frameList.join(",\n")
+                const content = `const word PROGMEM animation[] = {\n${formatted}};\n`;
+                return content;
+            }
 
             function drawLEDMatrix() {
                 ctx.fillStyle = "black"
@@ -71,6 +86,38 @@
                     }
                 }
             }
+            function downloadFirmware(){
+              fetch("/arduino/christbaumschmuck.ino")
+              .then(response => response.text())
+              .then(arduinoCode => {
+                codeAsLines = [];
+                arduinoCode = arduinoCode.split("\n");
+                var animation_index;
+                for (let i = 0; i < arduinoCode.length; i++){
+                    console.log(arduinoCode[i]);
+                    if (arduinoCode[i] ==="//animation goes here"){
+                      animation_index = i;
+                    } else {
+                      console.log("No marker found :(")
+                    }
+                    arduinoCode[i] += "\n";
+                }
+                codeAsLines = arduinoCode.slice(0, animation_index);
+                console.log(codeAsLines);
+                var animationSnippet = generateAnimation();
+                codeAsLines = codeAsLines.concat(animationSnippet);
+                console.log(codeAsLines);
+                codeAsLines = codeAsLines.concat(arduinoCode.slice(animation_index + 1, -1));
+                console.log(codeAsLines);
+                const blob = new Blob(codeAsLines, { type: "text/plain" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "firmware.ino";
+                link.click();
+
+              })
+              }
+
 
             function saveFrame() {
                 frames.push(ledStates.slice()); // Use slice to create a copy of the array
@@ -189,9 +236,9 @@
                 }
             });
             document.getElementById("startOverButton").addEventListener("click", startOver);
-            document.getElementById("downloadButton").addEventListener("click", downloadFrameList);
             document.getElementById("duplicateFrameButton").addEventListener("click", duplicateFrame);
             document.getElementById("clearFrameButton").addEventListener("click", clearFrame);
+            document.getElementById("downloadButton").addEventListener("click", downloadFirmware);
         });
         </script>
     </head>
@@ -221,7 +268,7 @@
             <div class="mb-3">
                 <button id="startOverButton" class="btn btn-danger">Restart</button>
                 <button id="playButton" class="btn btn-success">Play Animation</button>
-                <button id="downloadButton" class="btn btn-success">Download Animation List</button>
+                <button id="downloadButton" class="btn btn-success">Download Firmware</button>
             </div>
             <br>
             <br>
